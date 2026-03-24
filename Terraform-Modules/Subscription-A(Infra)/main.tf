@@ -86,7 +86,7 @@ resource "azurerm_network_interface" "linux_nic" {
     name                          = "linux-ipconfig"
     subnet_id                     = azurerm_subnet.subnet.id
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id = azurerm_public_ip.pip.id
+    public_ip_address_id = azurerm_public_ip.linux_pip.id
   }
 }
 
@@ -112,7 +112,7 @@ resource "azurerm_linux_virtual_machine" "linux_vm" {
   ]
 
   admin_username = "azureuser"
-  admin_password = "Password@123"   # 🔴 Change this
+  admin_password = "MySecure@12345"   # 🔴 Change this
 
   disable_password_authentication = false
 
