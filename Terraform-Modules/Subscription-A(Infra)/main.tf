@@ -65,11 +65,12 @@ resource "azurerm_subnet_network_security_group_association" "subnet_nsg_assoc" 
 # Public IPs
 # -----------------------------
 
-resource "azurerm_public_ip" "pip" {
-  name                = "devops-pip"
+resource "azurerm_public_ip" "linux_pip" {
+  name                = "linux-pip"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   allocation_method   = "Static"
+  sku                 = "Basic"
 }
 
 # -----------------------------
@@ -85,7 +86,7 @@ resource "azurerm_network_interface" "linux_nic" {
     name                          = "linux-ipconfig"
     subnet_id                     = azurerm_subnet.subnet.id
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.linux_pip.id
+    public_ip_address_id = azurerm_public_ip.pip.id
   }
 }
 
