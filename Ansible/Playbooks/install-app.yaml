@@ -1,0 +1,83 @@
+- name: Configure DevOps VM
+  hosts: devops
+  become: yes
+
+  tasks:
+
+    - name: Update apt
+      apt:
+        update_cache: yes
+
+    - name: Install base packages
+      apt:
+        name:
+          - curl
+          - wget
+          - git
+          - unzip
+          - apt-transport-https
+          - ca-certificates
+          - software-properties-common
+        state: present
+
+    # Java (Jenkins dependency)
+    - name: Install Java
+      apt:
+        name: openjdk-17-jdk
+        state: present
+
+    # Jenkins
+    - name: Install Jenkins
+      shell: |
+        curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io.key | tee \
+        /usr/share/keyrings/jenkins-keyring.asc > /dev/null
+        echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] \
+        https://pkg.jenkins.io/debian-stable binary/ | tee \
+        /etc/apt/sources.list.d/jenkins.list
+        apt update && apt install jenkins -y
+
+    - name: Start Jenkins
+      service:
+        name: jenkins
+        state: started
+        enabled: yes
+
+    # Docker
+    - name: Install Docker
+      apt:
+        name: docker.io
+        state: present
+
+    - name: Enable Docker
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Add user to docker group
+      user:
+        name: azureuser
+        groups: docker
+        append: yes
+
+    # kubectl
+    - name: Install kubectl
+      shell: |
+        curl -LO "https://dl.k8s.io/release/$(curl -L -s \
+        https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+        install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+    # Azure CLI
+    - name: Install Azure CLI
+      shell: |
+        curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+
+    # Terraform
+    - name: Install Terraform
+      shell: |
+        wget -O- https://apt.releases.hashicorp.com/gpg | \
+        gpg --dearmor | tee /usr/share/keyrings/hashicorp.gpg
+        echo "deb [signed-by=/usr/share/keyrings/hashicorp.gpg] \
+        https://apt.releases.hashicorp.com $(lsb_release -cs) main" | \
+        tee /etc/apt/sources.list.d/hashicorp.list
+        apt update && apt install terraform -y
