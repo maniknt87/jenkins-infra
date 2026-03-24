@@ -65,12 +65,11 @@ resource "azurerm_subnet_network_security_group_association" "subnet_nsg_assoc" 
 # Public IPs
 # -----------------------------
 
-resource "azurerm_public_ip" "linux_pip" {
-  name                = "linux-vm-pip"
+resource "azurerm_public_ip" "pip" {
+  name                = "devops-pip"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   allocation_method   = "Static"
-  sku                 = "Standard"
 }
 
 # -----------------------------
