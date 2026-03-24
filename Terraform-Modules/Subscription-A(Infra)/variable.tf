@@ -3,7 +3,7 @@ variable "subscription_id" {
 }
 
 variable "location" {
-  default = "East Asia"
+  default = "East Us"
 }
 
 variable "admin_username" {
