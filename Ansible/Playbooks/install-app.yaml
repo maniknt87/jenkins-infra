@@ -1,5 +1,5 @@
 - name: Configure DevOps VM
-  hosts: devops
+  hosts: linux
   become: yes
 
   tasks:
