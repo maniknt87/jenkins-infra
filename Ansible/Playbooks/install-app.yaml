@@ -46,10 +46,6 @@
     - name: Install Jenkins package
       apt:
         deb: /tmp/jenkins.deb
-
-    - name: Fix Jenkins dependencies
-      apt:
-        name: -f
         state: present
 
     - name: Start Jenkins service
