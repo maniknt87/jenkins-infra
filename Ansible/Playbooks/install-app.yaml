@@ -2,68 +2,56 @@
   hosts: linux
   become: yes
 
-  vars:
-    jenkins_keyring: /usr/share/keyrings/jenkins.gpg
-    hashicorp_keyring: /usr/share/keyrings/hashicorp.gpg
-
   tasks:
 
     # -----------------------------
-    # System Update
+    # Install base packages FIRST
     # -----------------------------
-    - name: Update apt cache
-      apt:
-        update_cache: yes
-
     - name: Install base packages
       apt:
         name:
           - curl
           - wget
-          - git
-          - unzip
           - gnupg
           - software-properties-common
           - apt-transport-https
           - ca-certificates
         state: present
+        update_cache: yes
 
     # -----------------------------
-    # Install Ansible
+    # Add Jenkins repo properly BEFORE apt update again
     # -----------------------------
-    - name: Install Ansible
+    - name: Add Jenkins GPG key
+      shell: |
+        curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io.key | \
+        gpg --dearmor -o /usr/share/keyrings/jenkins.gpg
+
+    - name: Add Jenkins repository
+      copy:
+        dest: /etc/apt/sources.list.d/jenkins.list
+        content: |
+          deb [signed-by=/usr/share/keyrings/jenkins.gpg] https://pkg.jenkins.io/debian-stable binary/
+
+    # -----------------------------
+    # NOW update apt (safe)
+    # -----------------------------
+    - name: Update apt cache after adding Jenkins repo
       apt:
-        name: ansible
-        state: present
+        update_cache: yes
 
     # -----------------------------
-    # Install Java (Jenkins dependency)
+    # Install Java + Jenkins
     # -----------------------------
     - name: Install Java
       apt:
         name: openjdk-17-jdk
         state: present
 
-    # -----------------------------
-    # Install Jenkins (FIXED METHOD)
-    # -----------------------------
-    - name: Add Jenkins GPG key
-      shell: |
-        curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io.key | \
-        gpg --dearmor -o {{ jenkins_keyring }}
-      args:
-        creates: "{{ jenkins_keyring }}"
-
-    - name: Add Jenkins repository
-      copy:
-        dest: /etc/apt/sources.list.d/jenkins.list
-        content: |
-          deb [signed-by={{ jenkins_keyring }}] https://pkg.jenkins.io/debian-stable binary/
-
     - name: Install Jenkins
       apt:
         name: jenkins
-        update_cache: yes
+        state: present
 
     - name: Start Jenkins
       service:
@@ -79,17 +67,11 @@
         name: docker.io
         state: present
 
-    - name: Start Docker
+    - name: Enable Docker
       service:
         name: docker
         state: started
         enabled: yes
-
-    - name: Add user to Docker group
-      user:
-        name: azureuser
-        groups: docker
-        append: yes
 
     # -----------------------------
     # Install kubectl
@@ -103,18 +85,16 @@
     # -----------------------------
     # Install Terraform
     # -----------------------------
-    - name: Add HashiCorp GPG key
+    - name: Add HashiCorp key
       shell: |
-        wget -O- https://apt.releases.hashicorp.com/gpg | \
-        gpg --dearmor -o {{ hashicorp_keyring }}
-      args:
-        creates: "{{ hashicorp_keyring }}"
+        curl -fsSL https://apt.releases.hashicorp.com/gpg | \
+        gpg --dearmor -o /usr/share/keyrings/hashicorp.gpg
 
     - name: Add HashiCorp repo
       copy:
         dest: /etc/apt/sources.list.d/hashicorp.list
         content: |
-          deb [signed-by={{ hashicorp_keyring }}] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main
+          deb [signed-by=/usr/share/keyrings/hashicorp.gpg] https://apt.releases.hashicorp.com jammy main
 
     - name: Install Terraform
       apt:
@@ -127,19 +107,3 @@
     - name: Install Azure CLI
       shell: |
         curl -sL https://aka.ms/InstallAzureCLIDeb | bash
-
-    # -----------------------------
-    # Verify installations
-    # -----------------------------
-    - name: Check versions
-      shell: |
-        echo "Jenkins:" && systemctl status jenkins | grep Active
-        echo "Docker:" && docker --version
-        echo "Kubectl:" && kubectl version --client
-        echo "Terraform:" && terraform version
-        echo "Azure CLI:" && az version
-        echo "Ansible:" && ansible --version
-      register: output
-
-    - debug:
-        var: output.stdout_lines
