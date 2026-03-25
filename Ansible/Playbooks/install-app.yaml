@@ -36,26 +36,20 @@
         state: present
 
     # -----------------------------
-    # Install Jenkins (STABLE METHOD)
+    # Install Jenkins (NO GPG ISSUE METHOD)
     # -----------------------------
-    - name: Add Jenkins key
-      apt_key:
-        url: https://pkg.jenkins.io/debian-stable/jenkins.io.key
-        state: present
+    - name: Download Jenkins package
+      get_url:
+        url: https://pkg.jenkins.io/debian-stable/binary/jenkins_2.452.1_all.deb
+        dest: /tmp/jenkins.deb
 
-    - name: Add Jenkins repository
-      apt_repository:
-        repo: "deb https://pkg.jenkins.io/debian-stable binary/"
-        state: present
-        filename: jenkins
-
-    - name: Update apt cache after Jenkins repo
+    - name: Install Jenkins package
       apt:
-        update_cache: yes
+        deb: /tmp/jenkins.deb
 
-    - name: Install Jenkins
+    - name: Fix Jenkins dependencies
       apt:
-        name: jenkins
+        name: -f
         state: present
 
     - name: Start Jenkins service
@@ -87,29 +81,29 @@
     # -----------------------------
     # Install kubectl
     # -----------------------------
+    - name: Get latest kubectl version
+      shell: curl -L -s https://dl.k8s.io/release/stable.txt
+      register: kubectl_version
+
     - name: Download kubectl
       get_url:
-        url: https://dl.k8s.io/release/stable.txt
-        dest: /tmp/k8s_version
-
-    - name: Install kubectl binary
-      shell: |
-        VERSION=$(cat /tmp/k8s_version)
-        curl -LO https://dl.k8s.io/release/${VERSION}/bin/linux/amd64/kubectl
-        install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+        url: "https://dl.k8s.io/release/{{ kubectl_version.stdout }}/bin/linux/amd64/kubectl"
+        dest: /usr/local/bin/kubectl
+        mode: '0755'
 
     # -----------------------------
     # Install Terraform
     # -----------------------------
     - name: Add HashiCorp GPG key
-      apt_key:
-        url: https://apt.releases.hashicorp.com/gpg
-        state: present
+      shell: |
+        curl -fsSL https://apt.releases.hashicorp.com/gpg | \
+        gpg --dearmor -o /usr/share/keyrings/hashicorp.gpg
 
     - name: Add HashiCorp repository
-      apt_repository:
-        repo: "deb https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
-        state: present
+      copy:
+        dest: /etc/apt/sources.list.d/hashicorp.list
+        content: |
+          deb [signed-by=/usr/share/keyrings/hashicorp.gpg] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main
 
     - name: Install Terraform
       apt:
@@ -124,9 +118,9 @@
         curl -sL https://aka.ms/InstallAzureCLIDeb | bash
 
     # -----------------------------
-    # Verify Installations
+    # Verify Installation
     # -----------------------------
-    - name: Verify tools installation
+    - name: Verify installed tools
       shell: |
         echo "Docker:" && docker --version
         echo "Kubectl:" && kubectl version --client
